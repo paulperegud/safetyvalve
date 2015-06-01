@@ -29,7 +29,7 @@
 
 -export([parse_configuration/1]).
 
--export([replenish/1, ask/1, ask/2, done/3, q/2]).
+-export([replenish/1, ask/1, ask/2, done/3, reschedule/3, q/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -97,6 +97,9 @@ ask(Name, Timestamp) ->
 
 done(Name, Ref, Timestamp) ->
     gen_server:call(Name, {done, Timestamp, Ref}, infinity).
+
+reschedule(Name, T1, T2) ->
+    gen_server:cast(Name, {reschedule, T1, T2}).
 
 replenish(Name) ->
     Name ! replenish,
@@ -172,6 +175,11 @@ handle_call(Request, _From, State) ->
 
 
 %% @private
+handle_cast({reschedule, T1, T2},
+	    State = #state{conf = Conf, queue = Q}) ->
+    reschedule1(T1, T2, Q, Conf),
+    {noreply, State};
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -245,6 +253,13 @@ process_queue(Now, K, Q, QT, TID, Started) ->
             drop(TID, Dropped),
             {Started, Q2}
     end.
+
+reschedule1(T1, T2, Q, #conf{queue_type = sv_queue_pri}) ->
+    sv_queue_pri:re(T1, T2, Q);
+reschedule1(_, _, Q, #conf{queue_type = QT}) ->
+    lager:warning("calling reschedule on queue ~p; wrong queue type! (~p)",
+		  [Q, QT]),
+    noop.
 
 enqueue(Term, Timestamp, Q, #conf { size = Sz, queue_type = QT } ) ->
     case QT:len(Q) of

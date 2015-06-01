@@ -1,6 +1,6 @@
 -module(sv).
 
--export([timestamp/0, new/1, new/2, destroy/1, ask/2, done/3]).
+-export([timestamp/0, new/1, new/2, destroy/1, ask/2, done/3, reschedule/3]).
 -export([run/2]).
 %% Internal API
 -export([report/2]).
@@ -69,7 +69,7 @@ run(Name, Fun) ->
 -spec ask(Queue, T) -> {go, Ref} | {error, Reason}
   when
     Queue :: atom() | pid(),
-    T :: integer(),
+    T :: any(),
     Ref :: term(), % Opaque
     Reason :: term().
 ask(QN, T) ->
@@ -82,9 +82,15 @@ ask(QN, T) ->
   when
     Queue :: atom(),
     Ref :: term(),
-    TE :: integer().
+    TE :: any().
 done(QN, R, TE) ->
   sv_queue:done(QN, R, TE).
+
+%% @doc reschedule/3 allows to change priority of task
+%% <p>You may use this function to change order of tasks in particular queue. 
+%% @see ask/2 for the documentation of how to invoke this function.</p>
+reschedule(QN, T1, T2) ->
+    sv_queue:reschedule(QN, T1, T2).
 
 %% @private
 report(_T, _Event) ->
