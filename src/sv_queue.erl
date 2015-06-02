@@ -228,7 +228,7 @@ process_queue(Now, #state { queue = Q, tokens = K, tasks = TID, conf = Conf, tas
         concurrency_full ->
             State;
         {go, RemainingConc} ->
-            ToStart = min(RemainingConc, K),
+            ToStart = min(RemainingConc, trunc(K)),
             QT = Conf#conf.queue_type,
             {Started, NQ} = process_queue(Now, ToStart, Q, QT, TID),
             State#state { queue = NQ, tokens = K - Started, task_count = TC + Started}
