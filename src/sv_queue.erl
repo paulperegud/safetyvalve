@@ -151,7 +151,6 @@ handle_call({ask, Timestamp}, {Pid, _Tag} = From,
     end;
 handle_call({ask, Timestamp}, {Pid, _Tag} = From,
 	#state {
-		tokens = 0,
 		conf = Conf,
 		queue = Q,
 		tasks = TID } = State) ->
@@ -168,10 +167,8 @@ handle_call({ask, Timestamp}, {Pid, _Tag} = From,
 handle_call({done, Now, Ref}, _From, #state { tasks = TID, task_count = TC } = State) ->
     ok = untrack_process(TID, Ref),
     {reply, ok, process_queue(Now, State#state { task_count = TC - 1}) };
-handle_call(Request, _From, State) ->
-    lager:error("Unknown call request: ~p", [Request]),
-    Reply = ok,
-    {reply, Reply, State}.
+handle_call(Call, _From, State) ->
+    {stop, {odd_call, Call}, State}.
 
 
 %% @private
@@ -180,8 +177,8 @@ handle_cast({reschedule, T1, T2},
     reschedule1(T1, T2, Q, Conf),
     {noreply, State};
 
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast(Msg, State) ->
+    {stop, {odd_cast, Msg}, State}.
 
 %% @private
 handle_info({'DOWN', Ref, _, _, _}, #state {
@@ -208,8 +205,8 @@ handle_info(replenish, #state { conf = C } = State) ->
     NewState = process_queue(Now, refill_tokens(State)),
     set_timer(C),
     {noreply, NewState};
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info(Info, State) ->
+    {stop, {odd_info, Info}, State}.
 
 %% @private
 terminate(_Reason, _State) ->
@@ -228,7 +225,7 @@ process_queue(Now, #state { queue = Q, tokens = K, tasks = TID, conf = Conf, tas
         concurrency_full ->
             State;
         {go, RemainingConc} ->
-            ToStart = min(RemainingConc, K),
+            ToStart = min(RemainingConc, trunc(K)),
             QT = Conf#conf.queue_type,
             {Started, NQ} = process_queue(Now, ToStart, Q, QT, TID),
             State#state { queue = NQ, tokens = K - Started, task_count = TC + Started}
@@ -277,7 +274,7 @@ analyze_tasks(TC, #conf { concurrency = Limit }) when TC == Limit -> concurrency
 %% @end
 refill_tokens(#state { tokens = K,
                        conf = #conf { rate = Rate,
-                                      token_limit = TL }} = State) when K >= 0 ->
+                                      token_limit = TL }} = State) ->
     TokenCount = min(K + Rate, TL),
     State#state { tokens = TokenCount }.
 

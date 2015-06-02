@@ -30,16 +30,16 @@ init([Filename]) ->
     {ok, #state { fd = Fd,  tracer = Tracer}}.
 	
 handle_call(stop, _From, State) ->
-    {stop, normal, ok, State}.
+    {stop, normal, ok, State};
+
+handle_call(Call, _From, State) ->
+    {stop, {odd_call, Call}, State}.
     
 handle_cast(Cast, State) ->
-    lager:error("Unknown cast: ~p", [Cast]),
-    {noreply, State}.
-    
+    {stop, {odd_cast, Cast}, State}.
 
 handle_info(Info, State) ->
-    lager:error("Unknown info: ~p", [Info]),
-    {noreply, State}.
+    {stop, {odd_info, Info}, State}.
     
 terminate(_Reason, #state { fd = Fd }) ->
     file:close(Fd),
