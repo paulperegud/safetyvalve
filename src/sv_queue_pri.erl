@@ -8,6 +8,12 @@
 
 -export([re/3]).
 
+-export([remove/3]).
+
+remove(Item, TS, QName) ->
+    true = ets:delete_object(QName, {TS, Item}),
+    QName.
+
 new() ->
 	ets:new(queue, [protected, ordered_set]).
 	
