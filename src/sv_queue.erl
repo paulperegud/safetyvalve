@@ -29,7 +29,7 @@
 
 -export([parse_configuration/1]).
 
--export([replenish/1, ask/1, ask/2, done/3, reschedule/3, q/2]).
+-export([replenish/1, ask/1, ask/2, done/3, reschedule/3, q/2, set_conf/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -108,6 +108,9 @@ replenish(Name) ->
 q(Name, Atom) ->
     gen_server:call(Name, {q, Atom}).
 
+set_conf(Name, Configuration) ->
+    gen_server:call(Name, {configuration, Configuration}).
+
 %%%===================================================================
 
 %% @private
@@ -126,6 +129,8 @@ handle_call({q, tokens}, _, #state { tokens = K } = State) ->
     {reply, K, State};
 handle_call({q, configuration}, _, #state { conf = Conf } = State) ->
     {reply, Conf, State};
+handle_call({configuration, Conf}, _, #state{} = State) ->
+    {reply, ok, State#state{conf = Conf}};
 handle_call({ask, Timestamp}, {Pid, _Tag} = From,
 		 #state {
 		 	tokens = K,
